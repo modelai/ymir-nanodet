@@ -32,6 +32,7 @@ from nanodet.util import (
     load_model_weight,
     mkdir,
 )
+from ymir.utils import modify_config
 
 
 def parse_args():
@@ -47,6 +48,7 @@ def parse_args():
 
 def main(args):
     load_config(cfg, args.config)
+    modify_config(cfg)
     if cfg.model.arch.head.num_classes != len(cfg.class_names):
         raise ValueError(
             "cfg.model.arch.head.num_classes must equal len(cfg.class_names), "
