@@ -19,20 +19,14 @@ import warnings
 import pytorch_lightning as pl
 import torch
 from pytorch_lightning.callbacks import TQDMProgressBar
+from ymir.utils import modify_config
+from ymir_exc.util import get_merged_config
 
 from nanodet.data.collate import naive_collate
 from nanodet.data.dataset import build_dataset
 from nanodet.evaluator import build_evaluator
 from nanodet.trainer.task import TrainingTask
-from nanodet.util import (
-    NanoDetLightningLogger,
-    cfg,
-    convert_old_model,
-    load_config,
-    load_model_weight,
-    mkdir,
-)
-from ymir.utils import modify_config
+from nanodet.util import NanoDetLightningLogger, cfg, convert_old_model, load_config, load_model_weight, mkdir
 
 
 def parse_args():
@@ -48,7 +42,8 @@ def parse_args():
 
 def main(args):
     load_config(cfg, args.config)
-    modify_config(cfg)
+    ymir_cfg = get_merged_config()
+    modify_config(cfg, ymir_cfg)
     if cfg.model.arch.head.num_classes != len(cfg.class_names):
         raise ValueError(
             "cfg.model.arch.head.num_classes must equal len(cfg.class_names), "
@@ -61,7 +56,8 @@ def main(args):
     torch.backends.cudnn.benchmark = True
     mkdir(local_rank, cfg.save_dir)
 
-    logger = NanoDetLightningLogger(cfg.save_dir)
+    mkdir(local_rank, ymir_cfg.ymir.output.tensorboard_dir)
+    logger = NanoDetLightningLogger(ymir_cfg.ymir.output.tensorboard_dir)
     logger.dump_cfg(cfg)
 
     if args.seed is not None:
