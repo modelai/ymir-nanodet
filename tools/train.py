@@ -19,7 +19,7 @@ import warnings
 import pytorch_lightning as pl
 import torch
 from pytorch_lightning.callbacks import TQDMProgressBar
-from ymir.utils import modify_config
+from ymir.utils import YmirMonitorCallback, modify_config
 from ymir_exc.util import get_merged_config
 
 from nanodet.data.collate import naive_collate
@@ -123,7 +123,7 @@ def main(args):
         log_every_n_steps=cfg.log.interval,
         num_sanity_val_steps=0,
         resume_from_checkpoint=model_resume_path,
-        callbacks=[TQDMProgressBar(refresh_rate=0)],  # disable tqdm bar
+        callbacks=[TQDMProgressBar(refresh_rate=0), YmirMonitorCallback()],  # disable tqdm bar
         logger=logger,
         benchmark=cfg.get("cudnn_benchmark", True),
         gradient_clip_val=cfg.get("grad_clip", 0.0),

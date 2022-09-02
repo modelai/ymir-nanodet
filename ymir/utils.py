@@ -87,3 +87,22 @@ class YmirMonitorCallback(Callback):
         1. Implement `training_epoch_end` in the `LightningModule` and access outputs via the module OR
         2. Cache data across train batch hooks inside the callback implementation to post-process in this hook.
         """
+        max_epochs = trainer.max_epochs
+        current_epoch = trainer.current_epoch
+
+        monitor_gap = max(1, max_epochs // 100)
+        if current_epoch % monitor_gap == 0 and trainer.global_rank in [0, -1]:
+            monitor.write_monitor_logger(percent=current_epoch / max_epochs)
+
+    # def on_train_batch_start(self,
+    #                          trainer: "pl.Trainer",
+    #                          pl_module: "pl.LightningModule",
+    #                          batch: Any,
+    #                          batch_idx: int) -> None:
+    #     """Called when the train batch begins."""
+    #     batch_per_epoch = trainer.num_training_batches
+    #     if trainer.num_training_batches == float("inf"):
+    #         batch_per_epoch = 100
+
+    #     if trainer.current_epoch == 0 and trainer.global_rank in [0, -1] and batch_idx < 10:
+    #         monitor.write_monitor_logger(percent=batch_idx / batch_per_epoch / trainer.max_epochs)
