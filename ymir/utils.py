@@ -5,7 +5,7 @@ import pytorch_lightning as pl
 from easydict import EasyDict as edict
 from pytorch_lightning.callbacks import Callback
 from ymir_exc import monitor
-from ymir_exc.util import convert_ymir_to_coco, get_weight_files, get_bool
+from ymir_exc.util import convert_ymir_to_coco, get_bool, get_weight_files
 
 from nanodet.util.yacs import CfgNode
 
