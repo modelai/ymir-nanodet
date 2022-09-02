@@ -5,7 +5,7 @@ import pytorch_lightning as pl
 from easydict import EasyDict as edict
 from pytorch_lightning.callbacks import Callback
 from ymir_exc import monitor
-from ymir_exc.util import convert_ymir_to_coco, get_weight_files
+from ymir_exc.util import convert_ymir_to_coco, get_weight_files, get_bool
 
 from nanodet.util.yacs import CfgNode
 
@@ -44,18 +44,33 @@ def modify_config(cfg: CfgNode, ymir_cfg: edict):
     cfg.model.arch.head.num_classes = len(ymir_cfg.param.class_names)
     cfg.model.arch.aux_head.num_classes = len(ymir_cfg.param.class_names)
     gpu_id: str = ymir_cfg.param.get('gpu_id', '0')
-    gpu_ids = [int(x) for x in gpu_id.split(',')]
-    cfg.device.gpu_ids = gpu_ids
+    gpu_count: int = ymir_cfg.param.get('gpu_count', 1)
+    if gpu_count > 0:
+        cfg.device.gpu_ids = [int(x) for x in gpu_id.split(',')]
+    else:
+        cfg.device.gpu_ids = -1  # use cpu to train
+
     cfg.class_names = ymir_cfg.param.class_names
 
     if ymir_cfg.ymir.run_training:
-        cfg.data.train.name = 'CocoDataset'
         ymir_dataset_info = convert_ymir_to_coco(cat_id_from_zero=False)
+        cfg.data.train.name = 'CocoDataset'
         cfg.data.train.img_path = ymir_dataset_info['train']['img_dir']
         cfg.data.train.ann_path = ymir_dataset_info['train']['ann_file']
         cfg.data.val.name = 'CocoDataset'
         cfg.data.val.img_path = ymir_dataset_info['val']['img_dir']
         cfg.data.val.ann_path = ymir_dataset_info['val']['ann_file']
+
+        resume: bool = get_bool(ymir_cfg, 'resume', False)
+        cfg.schedule.resume = resume
+
+        load_from: str = ymir_cfg.param.get('load_from', '')
+        cfg.schedule.load_from = load_from
+
+        # auto load pretrained weight if not set by user
+        if not resume and not load_from:
+            best_weight_file = get_best_weight_file(ymir_cfg)
+            cfg.schedule.load_from = best_weight_file
 
         # TODO if user want workers_per_gpu = -1?
         workers_per_gpu = int(ymir_cfg.param.workers_per_gpu)

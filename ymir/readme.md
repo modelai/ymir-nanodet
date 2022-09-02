@@ -9,8 +9,8 @@
 - [x] multi-gpu training
 - [x] tensorboard
 - [x] map and weight file save
-- [ ] monitor process
-- [ ] finetune
+- [x] monitor process
+- [x] finetune/resume/transfer learning
 - [ ] local-pretrained weight
 
 ## infer

@@ -92,7 +92,7 @@ def main(args):
     logger.info("Creating model...")
     task = TrainingTask(cfg, evaluator)
 
-    if "load_model" in cfg.schedule:
+    if "load_model" in cfg.schedule and os.path.exist(cfg.schedule.load_model):
         ckpt = torch.load(cfg.schedule.load_model)
         if "pytorch-lightning_version" not in ckpt:
             warnings.warn(
@@ -104,10 +104,17 @@ def main(args):
         logger.info("Loaded model weight from {}".format(cfg.schedule.load_model))
 
     model_resume_path = (
-        os.path.join(cfg.save_dir, "model_last.ckpt")
+        os.path.join(ymir_cfg.ymir.input.models_dir, "model_last.ckpt")
         if "resume" in cfg.schedule
         else None
     )
+
+    if os.path.exists(model_resume_path):
+        logger.info(f"resume from {model_resume_path}")
+    else:
+        warnings.warn(f'{model_resume_path} not exist!')
+        model_resume_path = None
+
     if cfg.device.gpu_ids == -1:
         logger.info("Using CPU training")
         accelerator, devices = "cpu", None
