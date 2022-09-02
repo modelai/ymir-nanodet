@@ -52,7 +52,7 @@ class Predictor(object):
         img_info["height"] = height
         img_info["width"] = width
         meta = dict(img_info=img_info, raw_img=img, img=img)
-        meta = self.pipeline(meta, self.cfg.data.val.input_size)
+        meta = self.pipeline(None, meta, self.cfg.data.val.input_size)
         meta["img"] = (
             torch.from_numpy(meta["img"].transpose(2, 0, 1))
             .unsqueeze(0)

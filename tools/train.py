@@ -19,19 +19,14 @@ import warnings
 import pytorch_lightning as pl
 import torch
 from pytorch_lightning.callbacks import TQDMProgressBar
+from ymir.utils import YmirMonitorCallback, modify_config
+from ymir_exc.util import get_merged_config
 
 from nanodet.data.collate import naive_collate
 from nanodet.data.dataset import build_dataset
 from nanodet.evaluator import build_evaluator
 from nanodet.trainer.task import TrainingTask
-from nanodet.util import (
-    NanoDetLightningLogger,
-    cfg,
-    convert_old_model,
-    load_config,
-    load_model_weight,
-    mkdir,
-)
+from nanodet.util import NanoDetLightningLogger, cfg, convert_old_model, load_config, load_model_weight, mkdir
 
 
 def parse_args():
@@ -47,6 +42,8 @@ def parse_args():
 
 def main(args):
     load_config(cfg, args.config)
+    ymir_cfg = get_merged_config()
+    modify_config(cfg, ymir_cfg)
     if cfg.model.arch.head.num_classes != len(cfg.class_names):
         raise ValueError(
             "cfg.model.arch.head.num_classes must equal len(cfg.class_names), "
@@ -59,7 +56,8 @@ def main(args):
     torch.backends.cudnn.benchmark = True
     mkdir(local_rank, cfg.save_dir)
 
-    logger = NanoDetLightningLogger(cfg.save_dir)
+    mkdir(local_rank, ymir_cfg.ymir.output.tensorboard_dir)
+    logger = NanoDetLightningLogger(ymir_cfg.ymir.output.tensorboard_dir)
     logger.dump_cfg(cfg)
 
     if args.seed is not None:
@@ -94,7 +92,7 @@ def main(args):
     logger.info("Creating model...")
     task = TrainingTask(cfg, evaluator)
 
-    if "load_model" in cfg.schedule:
+    if "load_model" in cfg.schedule and os.path.exist(cfg.schedule.load_model):
         ckpt = torch.load(cfg.schedule.load_model)
         if "pytorch-lightning_version" not in ckpt:
             warnings.warn(
@@ -106,10 +104,17 @@ def main(args):
         logger.info("Loaded model weight from {}".format(cfg.schedule.load_model))
 
     model_resume_path = (
-        os.path.join(cfg.save_dir, "model_last.ckpt")
+        os.path.join(ymir_cfg.ymir.input.models_dir, "model_last.ckpt")
         if "resume" in cfg.schedule
         else None
     )
+
+    if os.path.exists(model_resume_path):
+        logger.info(f"resume from {model_resume_path}")
+    else:
+        warnings.warn(f'{model_resume_path} not exist!')
+        model_resume_path = None
+
     if cfg.device.gpu_ids == -1:
         logger.info("Using CPU training")
         accelerator, devices = "cpu", None
@@ -125,7 +130,7 @@ def main(args):
         log_every_n_steps=cfg.log.interval,
         num_sanity_val_steps=0,
         resume_from_checkpoint=model_resume_path,
-        callbacks=[TQDMProgressBar(refresh_rate=0)],  # disable tqdm bar
+        callbacks=[TQDMProgressBar(refresh_rate=0), YmirMonitorCallback()],  # disable tqdm bar
         logger=logger,
         benchmark=cfg.get("cudnn_benchmark", True),
         gradient_clip_val=cfg.get("grad_clip", 0.0),
