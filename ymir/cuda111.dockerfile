@@ -20,6 +20,8 @@ RUN cd /app && mkdir -p /img-man && mv /app/ymir/img-man/*-template.yaml /img-ma
     && pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple \
     && pip install -r /app/requirements.txt \
     && pip install "git+https://github.com/modelai/ymir-executor-sdk.git@ymir1.0.0" \
+    && mkdir -p /root/.cache/torch/hub/checkpoints \
+    && wget https://download.pytorch.org/models/shufflenetv2_x1-5666bf0f80.pth -O /root/.cache/torch/hub/checkpoints/shufflenetv2_x1-5666bf0f80.pth \
     && echo "python3 /app/ymir/start.py" > /usr/bin/start.sh
 
 WORKDIR /app

@@ -88,6 +88,7 @@ def modify_config(cfg: CfgNode, ymir_cfg: edict):
         epochs = ymir_cfg.param.epochs
         if epochs > 0:
             cfg.schedule.total_epochs = epochs
+            cfg.schedule.val_intervals = max(1, epochs // 10)
 
     cfg.freeze()
 

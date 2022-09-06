@@ -11,7 +11,7 @@
 - [x] map and weight file save
 - [x] monitor process
 - [x] finetune/resume/transfer learning
-- [ ] local-pretrained weight
+- [x] local-pretrained weight
 
 ## infer
 - `ymir/ymir_infer.py`
@@ -22,3 +22,9 @@
 
 ## mining
 - wait to do ...
+
+## bug
+- [x] when the `epochs` is small and dataset is small.
+```
+FileNotFoundError: [Errno 2] No such file or directory: '/out/models/model_best/eval_results.txt'
+```
