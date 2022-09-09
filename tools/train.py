@@ -19,7 +19,6 @@ import warnings
 import pytorch_lightning as pl
 import torch
 from pytorch_lightning.callbacks import TQDMProgressBar
-from ymir.utils import YmirMonitorCallback, modify_config
 from ymir_exc.util import get_merged_config
 
 from nanodet.data.collate import naive_collate
@@ -27,6 +26,7 @@ from nanodet.data.dataset import build_dataset
 from nanodet.evaluator import build_evaluator
 from nanodet.trainer.task import TrainingTask
 from nanodet.util import NanoDetLightningLogger, cfg, convert_old_model, load_config, load_model_weight, mkdir
+from ymir.utils import YmirMonitorCallback, modify_config
 
 
 def parse_args():
@@ -92,7 +92,7 @@ def main(args):
     logger.info("Creating model...")
     task = TrainingTask(cfg, evaluator)
 
-    if "load_model" in cfg.schedule and os.path.exist(cfg.schedule.load_model):
+    if "load_model" in cfg.schedule and os.path.exists(cfg.schedule.load_model):
         ckpt = torch.load(cfg.schedule.load_model)
         if "pytorch-lightning_version" not in ckpt:
             warnings.warn(
