@@ -1,5 +1,6 @@
 import glob
 import os.path as osp
+import logging
 
 import pytorch_lightning as pl
 from easydict import EasyDict as edict
@@ -21,10 +22,24 @@ def get_config_file(ymir_cfg: edict) -> str:
 
 
 def get_best_weight_file(ymir_cfg: edict) -> str:
+    """
+    if ymir offer pretrained weights file, use it.
+    else find suitable coco pretrained weight file
+    """
+    # get ymir pretrained weights
     weight_files = get_weight_files(ymir_cfg, suffix=('.pth', '.ckpt'))
 
     if len(weight_files) == 0:
-        return ""
+        # find suitable coco pretrained weight
+        coco_pretrained_files = [f for f in glob.glob('/weights/**/*', recursive=True) if f.endswith(('.pth', '.ckpt'))]
+        model_name = osp.splitext(osp.basename(ymir_cfg.param.config_file))[0]
+
+        suitable_weight_files = [f for f in coco_pretrained_files if osp.basename(f).startswith(model_name)]
+        if len(suitable_weight_files) > 0:
+            logging.info(f'use coco pretrained weight file {suitable_weight_files[0]}')
+            return suitable_weight_files[0]
+        else:
+            return ""
     else:
         # choose weight file by priority, best > newest > others
         best_weight_files = [f for f in weight_files if osp.basename(f).find('best') > -1]
@@ -61,11 +76,17 @@ def modify_config(cfg: CfgNode, ymir_cfg: edict):
         cfg.data.val.img_path = ymir_dataset_info['val']['img_dir']
         cfg.data.val.ann_path = ymir_dataset_info['val']['ann_file']
 
+        input_size: int = int(ymir_cfg.param.get('input_size', -1))
+        if input_size > 0:
+            cfg.data.train.input_size = [input_size, input_size]
+            cfg.data.val.input_size = [input_size, input_size]
+
         resume: bool = get_bool(ymir_cfg, 'resume', False)
         cfg.schedule.resume = resume
 
         load_from: str = ymir_cfg.param.get('load_from', '')
-        cfg.schedule.load_from = load_from
+        if load_from:
+            cfg.schedule.load_from = load_from
 
         # auto load pretrained weight if not set by user
         if not resume and not load_from:

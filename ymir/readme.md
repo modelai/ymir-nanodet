@@ -28,3 +28,7 @@
 ```
 FileNotFoundError: [Errno 2] No such file or directory: '/out/models/model_best/eval_results.txt'
 ```
+
+## changelog
+
+- 2022/09/09: support `nanodet-plus` coco pretrained weights
