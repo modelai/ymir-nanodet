@@ -16,12 +16,14 @@
 ## infer
 - `ymir/ymir_infer.py`
 - [x] monitor process
-- [ ] nms
-- [ ] batch infer
-- [ ] multi-gpu infer
+- [x] nms
+- [x] batch infer
+- [x] multi-gpu infer
 
 ## mining
-- wait to do ...
+- [x] monitor process
+- [x] batch mining
+- [x] multi-gpu mining
 
 ## bug
 - [x] when the `epochs` is small and dataset is small.

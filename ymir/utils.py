@@ -1,13 +1,18 @@
 import glob
-import os.path as osp
 import logging
+import os.path as osp
+from typing import List
 
+import cv2
 import pytorch_lightning as pl
+import torch
+import torch.utils.data as td
 from easydict import EasyDict as edict
 from pytorch_lightning.callbacks import Callback
 from ymir_exc import monitor
 from ymir_exc.util import convert_ymir_to_coco, get_bool, get_weight_files
 
+from nanodet.data.transform import Pipeline
 from nanodet.util.yacs import CfgNode
 
 
@@ -131,6 +136,7 @@ class YmirMonitorCallback(Callback):
         if current_epoch % monitor_gap == 0 and trainer.global_rank in [0, -1]:
             monitor.write_monitor_logger(percent=current_epoch / max_epochs)
 
+    # TODO batch-level monitor logger
     # def on_train_batch_start(self,
     #                          trainer: "pl.Trainer",
     #                          pl_module: "pl.LightningModule",
@@ -143,3 +149,31 @@ class YmirMonitorCallback(Callback):
 
     #     if trainer.current_epoch == 0 and trainer.global_rank in [0, -1] and batch_idx < 10:
     #         monitor.write_monitor_logger(percent=batch_idx / batch_per_epoch / trainer.max_epochs)
+
+
+class NanodetYmirDataset(td.Dataset):
+    def __init__(self, images: List[str], cfg: CfgNode):
+        super().__init__()
+        self.images = images
+        self.input_size = cfg.data.val.input_size
+        self.pipeline = Pipeline(cfg.data.val.pipeline, cfg.data.val.keep_ratio)
+
+    def __getitem__(self, index):
+        img_info = {"id": index}
+        image_path = self.images[index]
+        img_info["file_name"] = image_path
+        img = cv2.imread(image_path)
+        if img is None:
+            print("image {} read failed.".format(image_path))
+            raise FileNotFoundError("Cant load image! Please check image path!")
+
+        height, width = img.shape[:2]
+        img_info["height"] = height
+        img_info["width"] = width
+        meta = dict(img_info=img_info, img=img)
+        meta = self.pipeline(None, meta, self.input_size)
+        meta["img"] = torch.from_numpy(meta["img"].transpose(2, 0, 1))
+        return meta
+
+    def __len__(self):
+        return len(self.images)
