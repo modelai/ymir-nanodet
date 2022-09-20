@@ -87,6 +87,7 @@ class NanodetALDDMining(ALDDMining):
 
     def extract_feats(self, img):
         """
+        single image interface
         return class_scores: B,C,N
             - B: batch size
             - C: class number

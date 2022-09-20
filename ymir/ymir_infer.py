@@ -80,7 +80,7 @@ def main() -> int:
     rank_infer_result = dict()
     for idx, batch in enumerate(tbar):
         if RANK in [-1, 0] and idx % monitor_gap == 0:
-            monitor.write_monitor_logger(percent=idx / rank_dataset_size)
+            monitor.write_monitor_logger(percent=idx * batch_size_per_gpu / rank_dataset_size)
 
         with torch.no_grad():
             batch['img'] = batch['img'].float().to(device)
