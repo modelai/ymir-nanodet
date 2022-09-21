@@ -79,6 +79,10 @@ def main() -> int:
 
     rank_infer_result = dict()
     for idx, batch in enumerate(tbar):
+        # batch-level sync, avoid 30min time-out error
+        if LOCAL_RANK != -1:
+            dist.barrier()
+
         if RANK in [-1, 0] and idx % monitor_gap == 0:
             monitor.write_monitor_logger(percent=idx * batch_size_per_gpu / rank_dataset_size)
 

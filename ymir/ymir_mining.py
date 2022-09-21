@@ -157,6 +157,10 @@ def main() -> int:
     pbar = tqdm(origin_dataset_loader) if RANK in [0, -1] else origin_dataset_loader
 
     for idx, batch in enumerate(pbar):
+        # batch-level sync, avoid 30min time-out error
+        if LOCAL_RANK != -1:
+            dist.barrier()
+            
         with torch.no_grad():
             outputs = miner.predictor.model.extract_feats(batch['img'].float().to(miner.device))
             scores = miner.mining(outputs)
