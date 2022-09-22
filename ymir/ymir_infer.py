@@ -26,7 +26,7 @@ def main() -> int:
     ymir_cfg = get_merged_config()
     gpu_id: str = str(ymir_cfg.param.get('gpu_id', '0'))
     gpu_count: int = len(gpu_id.split(','))
-    conf_threshold: float = float(ymir_cfg.param.get('conf_thres', '0.2'))
+    conf_threshold: float = float(ymir_cfg.param.get('conf_thres', '0.35'))
     class_names: List[str] = ymir_cfg.param.get('class_names')
     batch_size_per_gpu: int = int(ymir_cfg.param.get('batch_size_per_gpu', 16))
     num_workers_per_gpu: int = int(ymir_cfg.param.get('num_workers_per_gpu', 4))
