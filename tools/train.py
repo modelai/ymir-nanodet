@@ -93,7 +93,7 @@ def main(args):
     task = TrainingTask(cfg, evaluator)
 
     if "load_model" in cfg.schedule and os.path.exists(cfg.schedule.load_model):
-        ckpt = torch.load(cfg.schedule.load_model)
+        ckpt = torch.load(cfg.schedule.load_model, map_location='cpu')
         if "pytorch-lightning_version" not in ckpt:
             warnings.warn(
                 "Warning! Old .pth checkpoint is deprecated. "

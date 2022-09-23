@@ -58,6 +58,8 @@ def main() -> int:
         images = [line.strip() for line in f.readlines()]
 
     if RANK != -1:
+        torch.cuda.set_device(LOCAL_RANK)
+        torch.cuda.empty_cache()
         dist.init_process_group(backend="nccl" if dist.is_nccl_available() else "gloo")
         images_rank = images[RANK::WORLD_SIZE]
     else:
