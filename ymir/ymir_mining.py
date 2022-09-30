@@ -34,6 +34,7 @@ class NanodetALDDMining(ALDDMining):
     2. multiple class support
     3. changed hyper-parameter
     """
+
     def __init__(self, ymir_cfg: edict, task='mining'):
         self.ymir_cfg = ymir_cfg
         if ymir_cfg.ymir.run_mining and ymir_cfg.ymir.run_infer:
@@ -139,6 +140,8 @@ def main() -> int:
 
     # origin dataset
     if RANK != -1:
+        torch.cuda.set_device(LOCAL_RANK)
+        torch.cuda.empty_cache()
         dist.init_process_group(backend="nccl" if dist.is_nccl_available() else "gloo")
         images_rank = images[RANK::WORLD_SIZE]
     else:
@@ -160,7 +163,7 @@ def main() -> int:
         # batch-level sync, avoid 30min time-out error
         if LOCAL_RANK != -1:
             dist.barrier()
-            
+
         with torch.no_grad():
             outputs = miner.predictor.model.extract_feats(batch['img'].float().to(miner.device))
             scores = miner.mining(outputs)
