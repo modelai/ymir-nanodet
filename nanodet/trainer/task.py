@@ -107,6 +107,10 @@ class TrainingTask(LightningModule):
 
     def validation_step(self, batch, batch_idx):
         batch = self._preprocess_batch_input(batch)
+        # will make validation slower
+        if dist.is_available() and dist.is_initialized():
+            dist.barrier()
+
         if self.weight_averager is not None:
             preds, loss, loss_states = self.avg_model.forward_train(batch)
         else:
@@ -179,6 +183,8 @@ class TrainingTask(LightningModule):
 
     def test_step(self, batch, batch_idx):
         dets = self.predict(batch, batch_idx)
+        if dist.is_available() and dist.is_initialized():
+            dist.barrier()
         return dets
 
     def test_epoch_end(self, test_step_outputs):
