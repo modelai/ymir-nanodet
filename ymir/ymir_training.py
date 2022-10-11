@@ -5,7 +5,7 @@ import shutil
 import subprocess
 import sys
 
-from ymir_exc.util import find_free_port, get_merged_config, write_ymir_training_result
+from ymir_exc.util import convert_ymir_to_coco, find_free_port, get_merged_config, write_ymir_training_result
 
 
 def main() -> int:
@@ -15,6 +15,9 @@ def main() -> int:
     gpu_count = int(ymir_cfg.param.get('gpu_count'))
     # export_format = ymir_cfg.param.get('export_format', 'ark:raw')
     seed = int(ymir_cfg.param.get('seed', 2345))
+
+    ymir_dataset_info = convert_ymir_to_coco(cat_id_from_zero=False)
+    logging.info(f'convert dataset to coco format {ymir_dataset_info}')
 
     commands = ['python3']
     if gpu_count > 1:

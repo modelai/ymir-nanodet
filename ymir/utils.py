@@ -10,7 +10,7 @@ import torch.utils.data as td
 from easydict import EasyDict as edict
 from pytorch_lightning.callbacks import Callback
 from ymir_exc import monitor
-from ymir_exc.util import convert_ymir_to_coco, get_bool, get_weight_files
+from ymir_exc.util import get_bool, get_weight_files
 
 from nanodet.data.transform import Pipeline
 from nanodet.util.yacs import CfgNode
@@ -54,6 +54,17 @@ def get_best_weight_file(ymir_cfg: edict) -> str:
         return max(weight_files, key=osp.getctime)
 
 
+def get_converted_dataset_info(cfg: edict):
+    """
+    avoid DDP write
+    """
+    info = dict()
+    for split in ['train', 'val']:
+        split_json_file = osp.join(cfg.ymir.output.root_dir, 'ymir_dataset', f'ymir_{split}.json')
+        info[split] = dict(img_dir=cfg.ymir.input.assets_dir, ann_file=split_json_file)
+    return info
+
+
 def modify_config(cfg: CfgNode, ymir_cfg: edict):
     """
     modify nanodet yacs cfgnode
@@ -73,7 +84,8 @@ def modify_config(cfg: CfgNode, ymir_cfg: edict):
     cfg.class_names = ymir_cfg.param.class_names
 
     if ymir_cfg.ymir.run_training:
-        ymir_dataset_info = convert_ymir_to_coco(cat_id_from_zero=False)
+        ymir_dataset_info = get_converted_dataset_info(ymir_cfg)
+
         cfg.data.train.name = 'CocoDataset'
         cfg.data.train.img_path = ymir_dataset_info['train']['img_dir']
         cfg.data.train.ann_path = ymir_dataset_info['train']['ann_file']

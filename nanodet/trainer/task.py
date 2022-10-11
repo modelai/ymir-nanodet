@@ -48,9 +48,7 @@ class TrainingTask(LightningModule):
         self.log_style = "NanoDet"
         self.weight_averager = None
         if "weight_averager" in cfg.model:
-            self.weight_averager = build_weight_averager(
-                cfg.model.weight_averager, device=self.device
-            )
+            self.weight_averager = build_weight_averager(cfg.model.weight_averager, device=self.device)
             self.avg_model = copy.deepcopy(self.model)
 
     def _preprocess_batch_input(self, batch):
@@ -88,9 +86,7 @@ class TrainingTask(LightningModule):
             )
             self.scalar_summary("Train_loss/lr", "Train", lr, self.global_step)
             for loss_name in loss_states:
-                log_msg += "{}:{:.4f}| ".format(
-                    loss_name, loss_states[loss_name].mean().item()
-                )
+                log_msg += "{}:{:.4f}| ".format(loss_name, loss_states[loss_name].mean().item())
                 self.scalar_summary(
                     "Train_loss/" + loss_name,
                     "Train",
@@ -126,9 +122,7 @@ class TrainingTask(LightningModule):
                 lr,
             )
             for loss_name in loss_states:
-                log_msg += "{}:{:.4f}| ".format(
-                    loss_name, loss_states[loss_name].mean().item()
-                )
+                log_msg += "{}:{:.4f}| ".format(loss_name, loss_states[loss_name].mean().item())
             self.logger.info(log_msg)
 
         dets = self.model.head.post_process(preds, batch)
@@ -146,27 +140,17 @@ class TrainingTask(LightningModule):
         results = {}
         for res in validation_step_outputs:
             results.update(res)
-        all_results = (
-            gather_results(results)
-            if dist.is_available() and dist.is_initialized()
-            else results
-        )
+        all_results = (gather_results(results) if dist.is_available() and dist.is_initialized() else results)
         if all_results:
-            eval_results = self.evaluator.evaluate(
-                all_results, self.cfg.save_dir, rank=self.local_rank
-            )
+            eval_results = self.evaluator.evaluate(all_results, self.cfg.save_dir, rank=self.local_rank)
             metric = eval_results[self.cfg.evaluator.save_key]
             # save best model
             if metric > self.save_flag:
                 self.save_flag = metric
                 best_save_path = os.path.join(self.cfg.save_dir, "model_best")
                 mkdir(self.local_rank, best_save_path)
-                self.trainer.save_checkpoint(
-                    os.path.join(best_save_path, "model_best.ckpt")
-                )
-                self.save_model_state(
-                    os.path.join(best_save_path, "nanodet_model_best.pth")
-                )
+                self.trainer.save_checkpoint(os.path.join(best_save_path, "model_best.ckpt"))
+                self.save_model_state(os.path.join(best_save_path, "nanodet_model_best.pth"))
                 txt_path = os.path.join(best_save_path, "eval_results.txt")
                 if self.local_rank < 1:
                     with open(txt_path, "a") as f:
@@ -174,9 +158,7 @@ class TrainingTask(LightningModule):
                         for k, v in eval_results.items():
                             f.write("{}: {}\n".format(k, v))
             else:
-                warnings.warn(
-                    "Warning! Save_key is not in eval results! Only save model last!"
-                )
+                warnings.warn("Warning! Save_key is not in eval results! Only save model last!")
             self.logger.log_metrics(eval_results, self.current_epoch + 1)
         else:
             self.logger.info("Skip val on rank {}".format(self.local_rank))
@@ -185,26 +167,21 @@ class TrainingTask(LightningModule):
         dets = self.predict(batch, batch_idx)
         if dist.is_available() and dist.is_initialized():
             dist.barrier()
+
         return dets
 
     def test_epoch_end(self, test_step_outputs):
         results = {}
         for res in test_step_outputs:
             results.update(res)
-        all_results = (
-            gather_results(results)
-            if dist.is_available() and dist.is_initialized()
-            else results
-        )
+        all_results = (gather_results(results) if dist.is_available() and dist.is_initialized() else results)
         if all_results:
             res_json = self.evaluator.results2json(all_results)
             json_path = os.path.join(self.cfg.save_dir, "results.json")
             json.dump(res_json, open(json_path, "w"))
 
             if self.cfg.test_mode == "val":
-                eval_results = self.evaluator.evaluate(
-                    all_results, self.cfg.save_dir, rank=self.local_rank
-                )
+                eval_results = self.evaluator.evaluate(all_results, self.cfg.save_dir, rank=self.local_rank)
                 txt_path = os.path.join(self.cfg.save_dir, "eval_results.txt")
                 with open(txt_path, "a") as f:
                     for k, v in eval_results.items():
@@ -262,18 +239,13 @@ class TrainingTask(LightningModule):
         # warm up lr
         if self.trainer.global_step <= self.cfg.schedule.warmup.steps:
             if self.cfg.schedule.warmup.name == "constant":
-                warmup_lr = (
-                    self.cfg.schedule.optimizer.lr * self.cfg.schedule.warmup.ratio
-                )
+                warmup_lr = (self.cfg.schedule.optimizer.lr * self.cfg.schedule.warmup.ratio)
             elif self.cfg.schedule.warmup.name == "linear":
-                k = (1 - self.trainer.global_step / self.cfg.schedule.warmup.steps) * (
-                    1 - self.cfg.schedule.warmup.ratio
-                )
+                k = (1 - self.trainer.global_step / self.cfg.schedule.warmup.steps) * (1 -
+                                                                                       self.cfg.schedule.warmup.ratio)
                 warmup_lr = self.cfg.schedule.optimizer.lr * (1 - k)
             elif self.cfg.schedule.warmup.name == "exp":
-                k = self.cfg.schedule.warmup.ratio ** (
-                    1 - self.trainer.global_step / self.cfg.schedule.warmup.steps
-                )
+                k = self.cfg.schedule.warmup.ratio**(1 - self.trainer.global_step / self.cfg.schedule.warmup.steps)
                 warmup_lr = self.cfg.schedule.optimizer.lr * k
             else:
                 raise Exception("Unsupported warm up type!")
@@ -310,11 +282,7 @@ class TrainingTask(LightningModule):
     @rank_zero_only
     def save_model_state(self, path):
         self.logger.info("Saving model to {}".format(path))
-        state_dict = (
-            self.weight_averager.state_dict()
-            if self.weight_averager
-            else self.model.state_dict()
-        )
+        state_dict = (self.weight_averager.state_dict() if self.weight_averager else self.model.state_dict())
         torch.save({"state_dict": state_dict}, path)
 
     # ------------Hooks-----------------
@@ -328,9 +296,7 @@ class TrainingTask(LightningModule):
             if self.weight_averager and self.weight_averager.has_inited():
                 self.weight_averager.to(self.weight_averager.device)
                 return
-            self.weight_averager = build_weight_averager(
-                self.cfg.model.weight_averager, device=self.device
-            )
+            self.weight_averager = build_weight_averager(self.cfg.model.weight_averager, device=self.device)
             self.weight_averager.load_from(self.model)
 
     def on_train_epoch_start(self):
@@ -353,13 +319,9 @@ class TrainingTask(LightningModule):
         if self.weight_averager:
             avg_params = convert_avg_params(checkpointed_state)
             if len(avg_params) != len(self.model.state_dict()):
-                self.logger.info(
-                    "Weight averaging is enabled but average state does not"
-                    "match the model"
-                )
+                self.logger.info("Weight averaging is enabled but average state does not"
+                                 "match the model")
             else:
-                self.weight_averager = build_weight_averager(
-                    self.cfg.model.weight_averager, device=self.device
-                )
+                self.weight_averager = build_weight_averager(self.cfg.model.weight_averager, device=self.device)
                 self.weight_averager.load_state_dict(avg_params)
                 self.logger.info("Loaded average state from checkpoint.")
