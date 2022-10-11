@@ -7,4 +7,6 @@ workers_per_gpu: 4
 resume: False
 load_from: ''
 ddp_debug: False  # debug for ddp training
-profile: False  # profile model
+profiler: False  # profile model
+shm_size: 128G
+export_format: 'ark:raw'
