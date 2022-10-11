@@ -105,7 +105,8 @@ class GhostPAN(nn.Module):
         num_blocks=1,
         use_res=False,
         num_extra_level=0,
-        upsample_cfg=dict(scale_factor=2, mode="bilinear", align_corners=False),
+        upsample_cfg=dict(scale_factor=2, mode="bilinear"),
+        #upsample_cfg=dict(scale_factor=2, mode="bilinear", align_corners=True),
         norm_cfg=dict(type="BN"),
         activation="LeakyReLU",
     ):
@@ -119,6 +120,13 @@ class GhostPAN(nn.Module):
 
         # build top-down blocks
         self.upsample = nn.Upsample(**upsample_cfg)
+        #1.0x
+        #self.deconv13 = nn.ConvTranspose2d(96, 96, kernel_size=(2, 2), stride=(2, 2))
+        #self.deconv26 = nn.ConvTranspose2d(96, 96, kernel_size=(2, 2), stride=(2, 2))
+        
+        #1.5x
+        self.deconv13 = nn.ConvTranspose2d(128, 128, kernel_size=(2, 2), stride=(2, 2))
+        self.deconv26 = nn.ConvTranspose2d(128, 128, kernel_size=(2, 2), stride=(2, 2))
         self.reduce_layers = nn.ModuleList()
         for idx in range(len(in_channels)):
             self.reduce_layers.append(
@@ -210,12 +218,18 @@ class GhostPAN(nn.Module):
             reduce(input_x) for input_x, reduce in zip(inputs, self.reduce_layers)
         ]
         # top-down path
+        """
         inner_outs = [inputs[-1]]
         for idx in range(len(self.in_channels) - 1, 0, -1):
             feat_heigh = inner_outs[0]
             feat_low = inputs[idx - 1]
 
             inner_outs[0] = feat_heigh
+            #print(idx) # 2 1
+            #print(feat_heigh.shape)
+            #print(feat_low.shape)
+            #ConvTranspose2d(256, 256, kernel_size=(2, 2), stride=(2, 2))
+            #exit(0)
 
             upsample_feat = self.upsample(feat_heigh)
 
@@ -223,6 +237,44 @@ class GhostPAN(nn.Module):
                 torch.cat([upsample_feat, feat_low], 1)
             )
             inner_outs.insert(0, inner_out)
+        """
+        inner_outs = [inputs[-1]]
+
+        idx = 2
+        feat_heigh = inner_outs[0]
+        feat_low = inputs[idx - 1]
+
+        inner_outs[0] = feat_heigh
+        #print(idx)  # 2 1
+        #print(feat_heigh.shape)
+        #print(feat_low.shape)
+
+
+        upsample_feat = self.deconv13(feat_heigh)
+
+        inner_out = self.top_down_blocks[len(self.in_channels) - 1 - idx](
+            torch.cat([upsample_feat, feat_low], 1)
+        )
+        inner_outs.insert(0, inner_out)
+
+        idx = 1
+        feat_heigh = inner_outs[0]
+        feat_low = inputs[idx - 1]
+
+        inner_outs[0] = feat_heigh
+        #print(idx)  # 2 1
+        #print(feat_heigh.shape)
+        #print(feat_low.shape)
+
+        upsample_feat = self.deconv26(feat_heigh)
+
+        inner_out = self.top_down_blocks[len(self.in_channels) - 1 - idx](
+            torch.cat([upsample_feat, feat_low], 1)
+        )
+        inner_outs.insert(0, inner_out)
+
+
+
 
         # bottom-up path
         outs = [inner_outs[0]]
