@@ -6,6 +6,7 @@ batch_size_per_gpu: 16
 workers_per_gpu: 4
 resume: False
 shm_size: 128G
+export_format: 'ark:raw'
 load_from: '/weights/nanodet-plus-m-1.5x_416.pth'
 ddp_debug: False  # debug for ddp training
 profiler: False  # profile model
