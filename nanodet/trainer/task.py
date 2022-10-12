@@ -39,11 +39,12 @@ class TrainingTask(LightningModule):
         evaluator: Evaluator for evaluating the model performance.
     """
 
-    def __init__(self, cfg, evaluator=None):
+    def __init__(self, cfg, evaluator=None, max_barrier_times=0):
         super(TrainingTask, self).__init__()
         self.cfg = cfg
         self.model = build_model(cfg.model)
         self.evaluator = evaluator
+        self.max_barrier_times = max_barrier_times
         self.save_flag = -10
         self.log_style = "NanoDet"
         self.weight_averager = None
@@ -104,7 +105,7 @@ class TrainingTask(LightningModule):
     def validation_step(self, batch, batch_idx):
         batch = self._preprocess_batch_input(batch)
         # will make validation slower
-        if dist.is_available() and dist.is_initialized():
+        if dist.is_available() and dist.is_initialized() and batch_idx < self.max_barrier_times:
             dist.barrier()
 
         if self.weight_averager is not None:
