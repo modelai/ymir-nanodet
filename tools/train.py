@@ -71,6 +71,7 @@ def main(args):
     train_dataset = build_dataset(cfg.data.train, "train")
     val_dataset = build_dataset(cfg.data.val, "test")
 
+    max_barrier_times = len(val_dataset) // len(cfg.device.gpu_ids) // cfg.device.batchsize_per_gpu
     evaluator = build_evaluator(cfg.evaluator, val_dataset)
 
     train_dataloader = torch.utils.data.DataLoader(
@@ -93,7 +94,7 @@ def main(args):
     )
 
     logger.info("Creating model...")
-    task = TrainingTask(cfg, evaluator)
+    task = TrainingTask(cfg, evaluator, max_barrier_times)
 
     if "load_model" in cfg.schedule and os.path.exists(cfg.schedule.load_model):
         ckpt = torch.load(cfg.schedule.load_model, map_location='cpu')

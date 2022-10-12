@@ -138,6 +138,7 @@ def main() -> int:
     with open(ymir_cfg.ymir.input.candidate_index_file, 'r') as f:
         images = [line.strip() for line in f.readlines()]
 
+    max_barrier_times = len(images) // max(1, WORLD_SIZE) // miner.batch_size_per_gpu
     # origin dataset
     if RANK != -1:
         torch.cuda.set_device(LOCAL_RANK)
@@ -161,7 +162,7 @@ def main() -> int:
 
     for idx, batch in enumerate(pbar):
         # batch-level sync, avoid 30min time-out error
-        if LOCAL_RANK != -1:
+        if LOCAL_RANK != -1 and idx < max_barrier_times:
             dist.barrier()
 
         with torch.no_grad():
