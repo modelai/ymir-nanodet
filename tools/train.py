@@ -106,7 +106,7 @@ def main(args):
         logger.info("Loaded model weight from {}".format(cfg.schedule.load_model))
 
     model_resume_path = (os.path.join(ymir_cfg.ymir.input.models_dir, "model_last.ckpt")
-                         if "resume" in cfg.schedule else None)
+                         if cfg.schedule.resume else None)
 
     if os.path.exists(model_resume_path):
         logger.info(f"resume from {model_resume_path}")

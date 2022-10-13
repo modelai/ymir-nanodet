@@ -14,6 +14,21 @@
 - [x] local-pretrained weight
 - [ ] real-time map and weight file save
 
+### auto load_from/resume
+```
+resume: bool = get_bool(ymir_cfg, 'resume', False)
+cfg.schedule.resume = resume
+
+load_from: str = ymir_cfg.param.get('load_from', '')
+if load_from:
+    cfg.schedule.load_from = load_from
+
+# auto load pretrained weight if not set by user
+if not resume and not load_from:
+    best_weight_file = get_best_weight_file(ymir_cfg)
+    cfg.schedule.load_from = best_weight_file
+```
+
 ## infer
 - `ymir/ymir_infer.py`
 - [x] monitor process

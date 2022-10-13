@@ -29,7 +29,7 @@ def main() -> int:
     conf_threshold: float = float(ymir_cfg.param.get('conf_thres', '0.35'))
     class_names: List[str] = ymir_cfg.param.get('class_names')
     batch_size_per_gpu: int = int(ymir_cfg.param.get('batch_size_per_gpu', 16))
-    num_workers_per_gpu: int = int(ymir_cfg.param.get('num_workers_per_gpu', 4))
+    workers_per_gpu: int = int(ymir_cfg.param.get('workers_per_gpu', 4))
     pin_memory = get_bool(ymir_cfg, 'pin_memory', False)
     weight_file = get_best_weight_file(ymir_cfg)
 
@@ -71,7 +71,7 @@ def main() -> int:
                                           batch_size=batch_size_per_gpu,
                                           shuffle=False,
                                           sampler=None,
-                                          num_workers=num_workers_per_gpu,
+                                          num_workers=workers_per_gpu,
                                           pin_memory=pin_memory,
                                           drop_last=False)
 
@@ -93,13 +93,12 @@ def main() -> int:
             batch['img'] = batch['img'].float().to(device)
             results = predictor.model.inference(batch)
 
-        anns = []
-
         id_name_map = dict()
         for img_id, file_name in zip(batch['img_info']['id'], batch['img_info']['file_name']):
             id_name_map[int(img_id)] = file_name
 
         for img_id, det_result in results.items():
+            anns = []
             for class_id in det_result.keys():
                 for bbox in det_result[class_id]:
                     xmin, ymin, xmax, ymax, conf = bbox
