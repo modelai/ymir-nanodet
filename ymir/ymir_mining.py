@@ -81,7 +81,7 @@ class NanodetALDDMining(ALDDMining):
         self.align_corners = False
         self.cfg = cfg
         self.batch_size_per_gpu = int(ymir_cfg.param.get('batch_size_per_gpu', 16))
-        self.num_workers_per_gpu = int(ymir_cfg.param.get('num_workers_per_gpu', 4))
+        self.workers_per_gpu = int(ymir_cfg.param.get('workers_per_gpu', 4))
         self.pin_memory = get_bool(ymir_cfg, 'pin_memory', False)
         self.device = device
         self.pipeline = Pipeline(cfg.data.val.pipeline, cfg.data.val.keep_ratio)
@@ -152,7 +152,7 @@ def main() -> int:
                                           batch_size=miner.batch_size_per_gpu,
                                           shuffle=False,
                                           sampler=None,
-                                          num_workers=miner.num_workers_per_gpu,
+                                          num_workers=miner.workers_per_gpu,
                                           pin_memory=miner.pin_memory,
                                           drop_last=False)
 
