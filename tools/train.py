@@ -108,7 +108,7 @@ def main(args):
     model_resume_path = (os.path.join(ymir_cfg.ymir.input.models_dir, "model_last.ckpt")
                          if cfg.schedule.resume else None)
 
-    if os.path.exists(model_resume_path):
+    if model_resume_path and os.path.exists(model_resume_path):
         logger.info(f"resume from {model_resume_path}")
     else:
         warnings.warn(f'resume weight file {model_resume_path} not exist!')
