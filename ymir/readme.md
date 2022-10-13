@@ -12,6 +12,7 @@
 - [x] monitor process
 - [x] finetune/resume/transfer learning
 - [x] local-pretrained weight
+- [ ] real-time map and weight file save
 
 ### auto load_from/resume
 ```
