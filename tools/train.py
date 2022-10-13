@@ -111,7 +111,8 @@ def main(args):
     if model_resume_path and os.path.exists(model_resume_path):
         logger.info(f"resume from {model_resume_path}")
     else:
-        warnings.warn(f'resume weight file {model_resume_path} not exist!')
+        if model_resume_path:
+            warnings.warn(f'resume weight file {model_resume_path} not exist!')
         model_resume_path = None
 
     if cfg.device.gpu_ids == -1:
