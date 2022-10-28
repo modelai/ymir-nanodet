@@ -10,3 +10,4 @@ ddp_debug: False  # debug for ddp training
 profiler: False  # profile model
 shm_size: 128G
 export_format: 'ark:raw'
+ymir_saved_file_patterns: 'model_last.ckpt, model_best.ckpt, nanodet_model_best.pth, .*.json, .*.yaml, .*.yml'
