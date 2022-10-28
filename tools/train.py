@@ -26,7 +26,7 @@ from nanodet.data.dataset import build_dataset
 from nanodet.evaluator import build_evaluator
 from nanodet.trainer.task import TrainingTask
 from nanodet.util import NanoDetLightningLogger, cfg, convert_old_model, load_config, load_model_weight, mkdir
-from ymir.utils import YmirMonitorCallback, modify_config
+from ymir.utils import YmirMonitorCallback, modify_config, get_best_weight_file
 
 
 def parse_args():
@@ -105,8 +105,7 @@ def main(args):
         load_model_weight(task.model, ckpt, logger)
         logger.info("Loaded model weight from {}".format(cfg.schedule.load_model))
 
-    model_resume_path = (os.path.join(ymir_cfg.ymir.input.models_dir, "model_last.ckpt")
-                         if cfg.schedule.resume else None)
+    model_resume_path = get_best_weight_file(ymir_cfg, tag='last') if cfg.schedule.resume else None
 
     if model_resume_path and os.path.exists(model_resume_path):
         logger.info(f"resume from {model_resume_path}")

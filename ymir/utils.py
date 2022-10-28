@@ -26,7 +26,7 @@ def get_config_file(ymir_cfg: edict) -> str:
         return ""
 
 
-def get_best_weight_file(ymir_cfg: edict) -> str:
+def get_best_weight_file(ymir_cfg: edict, tag : str='best') -> str:
     """
     if ymir offer pretrained weights file, use it.
     else find suitable coco pretrained weight file
@@ -47,7 +47,7 @@ def get_best_weight_file(ymir_cfg: edict) -> str:
             return ""
     else:
         # choose weight file by priority, best > newest > others
-        best_weight_files = [f for f in weight_files if osp.basename(f).find('best') > -1]
+        best_weight_files = [f for f in weight_files if osp.basename(f).find(tag) > -1]
         if best_weight_files:
             return max(best_weight_files, key=osp.getctime)
 
@@ -106,7 +106,7 @@ def modify_config(cfg: CfgNode, ymir_cfg: edict):
             cfg.schedule.load_from = load_from
 
         # auto load pretrained weight if not set by user
-        if not resume and not load_from:
+        if not resume and (not load_from or load_from == '/weights/nanodet-plus-m-1.5x_416.pth'):
             best_weight_file = get_best_weight_file(ymir_cfg)
             cfg.schedule.load_from = best_weight_file
 
