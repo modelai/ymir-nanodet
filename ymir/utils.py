@@ -106,7 +106,7 @@ def modify_config(cfg: CfgNode, ymir_cfg: edict):
             cfg.schedule.load_from = load_from
 
         # auto load pretrained weight if not set by user
-        if not resume and (not load_from or load_from == '/weights/nanodet-plus-m-1.5x_416.pth'):
+        if not resume and (not load_from or load_from.startswith('/weights')):
             best_weight_file = get_best_weight_file(ymir_cfg)
             cfg.schedule.load_from = best_weight_file
 
