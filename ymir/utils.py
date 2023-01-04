@@ -26,7 +26,7 @@ def get_config_file(ymir_cfg: edict) -> str:
         return ""
 
 
-def get_best_weight_file(ymir_cfg: edict, tag : str='best') -> str:
+def get_best_weight_file(ymir_cfg: edict, tag: str='best') -> str:
     """
     if ymir offer pretrained weights file, use it.
     else find suitable coco pretrained weight file
@@ -116,6 +116,17 @@ def modify_config(cfg: CfgNode, ymir_cfg: edict):
             cfg.device.workers_per_gpu = workers_per_gpu
 
         batch_size_per_gpu = int(ymir_cfg.param.batch_size_per_gpu)
+
+        # change batch size and gpu_ids for small dataset
+        with open(ymir_cfg.ymir.input.training_index_file, 'r') as fp:
+            lines = fp.readlines()
+        train_dataset_size = len(lines)
+        if train_dataset_size < batch_size_per_gpu:
+            batch_size_per_gpu = max(2, train_dataset_size)
+            cfg.device.gpu_ids = [0]
+        elif train_dataset_size < batch_size_per_gpu * gpu_count:
+            cfg.device.gpu_ids = [0]
+
         if batch_size_per_gpu > 0:
             cfg.device.batchsize_per_gpu = batch_size_per_gpu
 
