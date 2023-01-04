@@ -45,6 +45,14 @@ class OneStageDetector(nn.Module):
             x = self.head(x)
         return x
 
+    def extract_feats(self, x):
+        x = self.backbone(x)
+        if hasattr(self, "fpn"):
+            x = self.fpn(x)
+        if hasattr(self, "head"):
+            x = self.head.extract_feats(x)
+        return x
+
     def inference(self, meta):
         with torch.no_grad():
             # torch.cuda.synchronize()

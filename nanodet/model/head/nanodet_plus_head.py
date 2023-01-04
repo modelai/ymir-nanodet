@@ -147,6 +147,22 @@ class NanoDetPlusHead(nn.Module):
         outputs = torch.cat(outputs, dim=2).permute(0, 2, 1)
         return outputs
 
+    def extract_feats(self, feats):
+        if torch.onnx.is_in_onnx_export():
+            return self._forward_onnx(feats)
+        outputs = []
+        for feat, cls_convs, gfl_cls in zip(
+                feats,
+                self.cls_convs,
+                self.gfl_cls,
+        ):
+            for conv in cls_convs:
+                feat = conv(feat)
+            output = gfl_cls(feat)
+            outputs.append(output)
+
+        return outputs
+
     def loss(self, preds, gt_meta, aux_preds=None):
         """Compute losses.
         Args:

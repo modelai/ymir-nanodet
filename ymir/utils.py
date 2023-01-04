@@ -1,13 +1,18 @@
 import glob
+import logging
 import os.path as osp
+from typing import List
 
+import cv2
 import pytorch_lightning as pl
+import torch
+import torch.utils.data as td
 from easydict import EasyDict as edict
+from nanodet.data.transform import Pipeline
+from nanodet.util.yacs import CfgNode
 from pytorch_lightning.callbacks import Callback
 from ymir_exc import monitor
-from ymir_exc.util import convert_ymir_to_coco, get_bool, get_weight_files
-
-from nanodet.util.yacs import CfgNode
+from ymir_exc.util import get_bool, get_weight_files
 
 
 # TODO save and load config file for ymir
@@ -21,10 +26,25 @@ def get_config_file(ymir_cfg: edict) -> str:
 
 
 def get_best_weight_file(ymir_cfg: edict) -> str:
+    """
+    if ymir offer pretrained weights file, use it.
+    else find suitable coco pretrained weight file
+    """
+    # get ymir pretrained weights
     weight_files = get_weight_files(ymir_cfg, suffix=('.pth', '.ckpt'))
 
     if len(weight_files) == 0:
-        return ""
+        assert ymir_cfg.ymir.run_training, 'only training mode can load pre-train weights'
+        # find suitable coco pretrained weight
+        coco_pretrained_files = [f for f in glob.glob('/weights/**/*', recursive=True) if f.endswith(('.pth', '.ckpt'))]
+        model_name = osp.splitext(osp.basename(ymir_cfg.param.config_file))[0]
+
+        suitable_weight_files = [f for f in coco_pretrained_files if osp.basename(f).startswith(model_name)]
+        if len(suitable_weight_files) > 0:
+            logging.info(f'use coco pretrained weight file {suitable_weight_files[0]}')
+            return suitable_weight_files[0]
+        else:
+            return ""
     else:
         # choose weight file by priority, best > newest > others
         best_weight_files = [f for f in weight_files if osp.basename(f).find('best') > -1]
@@ -32,6 +52,17 @@ def get_best_weight_file(ymir_cfg: edict) -> str:
             return max(best_weight_files, key=osp.getctime)
 
         return max(weight_files, key=osp.getctime)
+
+
+def get_converted_dataset_info(cfg: edict):
+    """
+    avoid DDP write
+    """
+    info = dict()
+    for split in ['train', 'val']:
+        split_json_file = osp.join(cfg.ymir.output.root_dir, 'ymir_dataset', f'ymir_{split}.json')
+        info[split] = dict(img_dir=cfg.ymir.input.assets_dir, ann_file=split_json_file)
+    return info
 
 
 def modify_config(cfg: CfgNode, ymir_cfg: edict):
@@ -53,7 +84,8 @@ def modify_config(cfg: CfgNode, ymir_cfg: edict):
     cfg.class_names = ymir_cfg.param.class_names
 
     if ymir_cfg.ymir.run_training:
-        ymir_dataset_info = convert_ymir_to_coco(cat_id_from_zero=False)
+        ymir_dataset_info = get_converted_dataset_info(ymir_cfg)
+
         cfg.data.train.name = 'CocoDataset'
         cfg.data.train.img_path = ymir_dataset_info['train']['img_dir']
         cfg.data.train.ann_path = ymir_dataset_info['train']['ann_file']
@@ -61,11 +93,17 @@ def modify_config(cfg: CfgNode, ymir_cfg: edict):
         cfg.data.val.img_path = ymir_dataset_info['val']['img_dir']
         cfg.data.val.ann_path = ymir_dataset_info['val']['ann_file']
 
+        input_size: int = int(ymir_cfg.param.get('input_size', -1))
+        if input_size > 0:
+            cfg.data.train.input_size = [input_size, input_size]
+            cfg.data.val.input_size = [input_size, input_size]
+
         resume: bool = get_bool(ymir_cfg, 'resume', False)
         cfg.schedule.resume = resume
 
         load_from: str = ymir_cfg.param.get('load_from', '')
-        cfg.schedule.load_from = load_from
+        if load_from:
+            cfg.schedule.load_from = load_from
 
         # auto load pretrained weight if not set by user
         if not resume and not load_from:
@@ -78,6 +116,17 @@ def modify_config(cfg: CfgNode, ymir_cfg: edict):
             cfg.device.workers_per_gpu = workers_per_gpu
 
         batch_size_per_gpu = int(ymir_cfg.param.batch_size_per_gpu)
+
+        # change batch size and gpu_ids for small dataset
+        with open(ymir_cfg.ymir.input.training_index_file, 'r') as fp:
+            lines = fp.readlines()
+        train_dataset_size = len(lines)
+        if train_dataset_size < batch_size_per_gpu:
+            batch_size_per_gpu = max(2, train_dataset_size)
+            cfg.device.gpu_ids = [0]
+        elif train_dataset_size < batch_size_per_gpu * gpu_count:
+            cfg.device.gpu_ids = [0]
+
         if batch_size_per_gpu > 0:
             cfg.device.batchsize_per_gpu = batch_size_per_gpu
 
@@ -88,6 +137,7 @@ def modify_config(cfg: CfgNode, ymir_cfg: edict):
         epochs = ymir_cfg.param.epochs
         if epochs > 0:
             cfg.schedule.total_epochs = epochs
+            cfg.schedule.val_intervals = max(1, epochs // 10)
 
     cfg.freeze()
 
@@ -96,6 +146,7 @@ class YmirMonitorCallback(Callback):
     """
     write training process for ymir monitor
     """
+
     def on_train_epoch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
         """Called when the train epoch ends.
         To access all batch outputs at the end of the epoch, either:
@@ -109,6 +160,7 @@ class YmirMonitorCallback(Callback):
         if current_epoch % monitor_gap == 0 and trainer.global_rank in [0, -1]:
             monitor.write_monitor_logger(percent=current_epoch / max_epochs)
 
+    # TODO batch-level monitor logger
     # def on_train_batch_start(self,
     #                          trainer: "pl.Trainer",
     #                          pl_module: "pl.LightningModule",
@@ -121,3 +173,32 @@ class YmirMonitorCallback(Callback):
 
     #     if trainer.current_epoch == 0 and trainer.global_rank in [0, -1] and batch_idx < 10:
     #         monitor.write_monitor_logger(percent=batch_idx / batch_per_epoch / trainer.max_epochs)
+
+
+class NanodetYmirDataset(td.Dataset):
+
+    def __init__(self, images: List[str], cfg: CfgNode):
+        super().__init__()
+        self.images = images
+        self.input_size = cfg.data.val.input_size
+        self.pipeline = Pipeline(cfg.data.val.pipeline, cfg.data.val.keep_ratio)
+
+    def __getitem__(self, index):
+        img_info = {"id": index}
+        image_path = self.images[index]
+        img_info["file_name"] = image_path
+        img = cv2.imread(image_path)
+        if img is None:
+            print("image {} read failed.".format(image_path))
+            raise FileNotFoundError("Cant load image! Please check image path!")
+
+        height, width = img.shape[:2]
+        img_info["height"] = height
+        img_info["width"] = width
+        meta = dict(img_info=img_info, img=img)
+        meta = self.pipeline(None, meta, self.input_size)
+        meta["img"] = torch.from_numpy(meta["img"].transpose(2, 0, 1))
+        return meta
+
+    def __len__(self):
+        return len(self.images)

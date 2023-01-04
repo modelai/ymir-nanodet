@@ -1,7 +1,13 @@
 config_file: config/nanodet-plus-m_416.yml
 epochs: 100
-learning_rate: -1
+input_size: -1  # use -1 to use the default input size
+learning_rate: -1  # use -1 to use default learning rate in config file
 batch_size_per_gpu: 16
-workers_per_gpu: 16
+workers_per_gpu: 4
 resume: False
 load_from: ''
+# ddp_debug: False  # debug for ddp training
+# profiler: False  # profile model
+shm_size: 128G
+export_format: 'ark:raw'
+ymir_saved_file_patterns: 'model_last.ckpt, model_best.ckpt, nanodet_model_best.pth, .*.json, .*.yaml, .*.yml'

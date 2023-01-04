@@ -39,7 +39,7 @@ class Predictor(object):
         self.cfg = cfg
         self.device = device
         model = build_model(cfg.model)
-        ckpt = torch.load(model_path, map_location=lambda storage, loc: storage)
+        ckpt = torch.load(model_path, map_location='cpu')
         load_model_weight(model, ckpt, logger)
         if cfg.model.arch.backbone.name == "RepVGG":
             deploy_config = cfg.model
