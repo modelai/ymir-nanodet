@@ -18,15 +18,15 @@ import warnings
 
 import pytorch_lightning as pl
 import torch
-from pytorch_lightning.callbacks import TQDMProgressBar
-from ymir_exc.util import get_bool, get_merged_config
-
 from nanodet.data.collate import naive_collate
 from nanodet.data.dataset import build_dataset
 from nanodet.evaluator import build_evaluator
 from nanodet.trainer.task import TrainingTask
-from nanodet.util import NanoDetLightningLogger, cfg, convert_old_model, load_config, load_model_weight, mkdir
+from nanodet.util import (NanoDetLightningLogger, cfg, convert_old_model,
+                          load_config, load_model_weight, mkdir)
+from pytorch_lightning.callbacks import TQDMProgressBar
 from ymir.utils import YmirMonitorCallback, modify_config
+from ymir_exc.util import get_bool, get_merged_config
 
 
 def parse_args():
@@ -82,6 +82,7 @@ def main(args):
         pin_memory=True,
         collate_fn=naive_collate,
         drop_last=True,
+        persistent_workers=True,
     )
     val_dataloader = torch.utils.data.DataLoader(
         val_dataset,
@@ -91,6 +92,7 @@ def main(args):
         pin_memory=True,
         collate_fn=naive_collate,
         drop_last=False,
+        persistent_workers=True,
     )
 
     logger.info("Creating model...")
@@ -127,7 +129,7 @@ def main(args):
         check_val_every_n_epoch=cfg.schedule.val_intervals,
         accelerator=accelerator,
         devices=devices,
-        log_every_n_steps=cfg.log.interval,
+        log_every_n_steps=min(max_barrier_times, cfg.log.interval),
         num_sanity_val_steps=0,
         profiler=profiler,
         resume_from_checkpoint=model_resume_path,

@@ -51,3 +51,4 @@ FileNotFoundError: [Errno 2] No such file or directory: '/out/models/model_best/
 
 - 2022/09/09: support `nanodet-plus` coco pretrained weights
 - 2022/09/20: support `aldd mining`
+- 2023/01/04: `persistent_workers=True`

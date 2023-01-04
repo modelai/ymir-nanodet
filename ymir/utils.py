@@ -8,12 +8,11 @@ import pytorch_lightning as pl
 import torch
 import torch.utils.data as td
 from easydict import EasyDict as edict
+from nanodet.data.transform import Pipeline
+from nanodet.util.yacs import CfgNode
 from pytorch_lightning.callbacks import Callback
 from ymir_exc import monitor
 from ymir_exc.util import get_bool, get_weight_files
-
-from nanodet.data.transform import Pipeline
-from nanodet.util.yacs import CfgNode
 
 
 # TODO save and load config file for ymir
@@ -35,6 +34,7 @@ def get_best_weight_file(ymir_cfg: edict) -> str:
     weight_files = get_weight_files(ymir_cfg, suffix=('.pth', '.ckpt'))
 
     if len(weight_files) == 0:
+        assert ymir_cfg.ymir.run_training, 'only training mode can load pre-train weights'
         # find suitable coco pretrained weight
         coco_pretrained_files = [f for f in glob.glob('/weights/**/*', recursive=True) if f.endswith(('.pth', '.ckpt'))]
         model_name = osp.splitext(osp.basename(ymir_cfg.param.config_file))[0]
@@ -135,6 +135,7 @@ class YmirMonitorCallback(Callback):
     """
     write training process for ymir monitor
     """
+
     def on_train_epoch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
         """Called when the train epoch ends.
         To access all batch outputs at the end of the epoch, either:
@@ -164,6 +165,7 @@ class YmirMonitorCallback(Callback):
 
 
 class NanodetYmirDataset(td.Dataset):
+
     def __init__(self, images: List[str], cfg: CfgNode):
         super().__init__()
         self.images = images
